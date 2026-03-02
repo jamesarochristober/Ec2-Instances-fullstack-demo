@@ -20,7 +20,7 @@ jobs:
         run: |
           docker build -t fastapi-app ./backend
 
-      - name: Login to Nexus (HTTP)
+      - name: Login to Nexus (FORCE HTTP)
         run: |
           echo "${{ secrets.NEXUS_PASSWORD }}" | docker login \
           http://${{ secrets.NEXUS_URL }} \
@@ -30,12 +30,12 @@ jobs:
       - name: Tag Image for Nexus
         run: |
           docker tag fastapi-app:latest \
-          ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+          http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
 
       - name: Push Image to Nexus
         run: |
           docker push \
-          ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+          http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -48,12 +48,11 @@ jobs:
               -u ${{ secrets.NEXUS_USERNAME }} \
               -p ${{ secrets.NEXUS_PASSWORD }}
 
-            docker pull ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+            docker pull http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
 
             docker stop fastapi-app || true
             docker rm fastapi-app || true
 
-            docker run -d \
+            docker run -d -p 8000:8000 \
               --name fastapi-app \
-              -p 8000:8000 \
-              ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+              http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest

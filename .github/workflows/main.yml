@@ -16,9 +16,10 @@ jobs:
     - name: Set up Docker
       uses: docker/setup-buildx-action@v3
 
+    # ✅ BUILD FROM backend FOLDER
     - name: Build Docker Image
       run: |
-        docker build -t fastapi-app .
+        docker build -t fastapi-app ./backend
 
     - name: Tag Image for Nexus
       run: |
@@ -55,4 +56,5 @@ jobs:
 
           docker run -d -p 8000:8000 \
           --name fastapi-app \
+          --restart always \
           ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest

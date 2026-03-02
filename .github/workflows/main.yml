@@ -10,33 +10,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # 2️⃣ Setup Docker builder
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
+      # 3️⃣ Build Docker Image (from backend folder)
       - name: Build Docker Image
         run: |
           docker build -t fastapi-app ./backend
 
-      - name: Login to Nexus (FORCE HTTP)
+      # 4️⃣ Tag image for Nexus
+      - name: Tag Image for Nexus
+        run: |
+          docker tag fastapi-app:latest \
+          ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+
+      # 5️⃣ Login to Nexus (FORCE HTTP)
+      - name: Login to Nexus
         run: |
           echo "${{ secrets.NEXUS_PASSWORD }}" | docker login \
           http://${{ secrets.NEXUS_URL }} \
           --username ${{ secrets.NEXUS_USERNAME }} \
           --password-stdin
 
-      - name: Tag Image for Nexus
-        run: |
-          docker tag fastapi-app:latest \
-          http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
-
+      # 6️⃣ Push image to Nexus
       - name: Push Image to Nexus
         run: |
           docker push \
-          http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+          ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
 
+      # 7️⃣ Deploy to EC2
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -48,11 +55,11 @@ jobs:
               -u ${{ secrets.NEXUS_USERNAME }} \
               -p ${{ secrets.NEXUS_PASSWORD }}
 
-            docker pull http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+            docker pull ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
 
             docker stop fastapi-app || true
             docker rm fastapi-app || true
 
             docker run -d -p 8000:8000 \
               --name fastapi-app \
-              http://${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
+              ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi-app:latest
